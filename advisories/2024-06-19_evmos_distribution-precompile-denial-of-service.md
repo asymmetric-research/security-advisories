@@ -73,3 +73,11 @@ cast call --mnemonic "test test test test test test test test test test test jun
 ## Remediation
 
 This issue was [remediated](https://github.com/evmos/evmos/commit/cb403bcf2f80327755dc24b5e78ef406a8ec1c68) by retrieving the maximum amount of validators from the staking keeper, and restricting `maxRetrieval` to that amount.
+
+## Timeline
+
+* 19-06-2024 - Reported vulnerability to Evmos
+* 19-06-2024 - Evmos acknowledges receipt of the report
+* 27-06-2024 - Evmos provides feedback that the issue is still being attended to, and steps have been taken to mitigate risk of exploitation
+* 05-07-2024 - An [advisory](https://github.com/evmos/evmos/security/advisories/GHSA-68fc-7mhg-6f6c) is released and the vulnerability is considered fixed
+* 26-08-2024 - Asymmetric Research security advisory is released
