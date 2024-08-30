@@ -1,2 +1,2 @@
 # security-advisories
-Security advisories for bugs that don't go on the official Asymmetric Research blog. 
+Security advisories for issues found by Asymmetric Research. Please also see our [blog](https://www.asymmetric.re/blog).
