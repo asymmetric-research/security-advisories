@@ -2,7 +2,9 @@
 
 ## Description
 
-CometBFT has introduced support for BLS signatures over the BLS12-381 curve. The support is a set of functions wrapping over `blst`'s Go bindings. The signature method of type `PrivKey` at https://github.com/cometbft/cometbft/blob/276996ad958475b69727be2c57d4d0d818849a55/crypto/bls12381/key_bls12381.go#L110
+CometBFT's BLS12-381 signatures were generated from a further round of hashing of the message. This additional step ended up affecting the second-preimage resistance of the signature scheme, because different objects yielded the same signature under the same key.
+
+CometBFT's support for BLS signatures over the BLS12-381 curve is a set of functions wrapping over `blst`'s Go bindings. The signature method of type `PrivKey` at https://github.com/cometbft/cometbft/blob/276996ad958475b69727be2c57d4d0d818849a55/crypto/bls12381/key_bls12381.go#L110
 adds a conditional branch to discern whether the message to sign, a byte slice, is longer than 32 bytes; in such case, the slice is hashed with `sha256`, and `blst`'s `Sign` method (of type `blst.P2Affine`) is called on the message digest, instead of the original message.
 
 Not only is this addition superflous but it alters the strength of the hash-to-curve construction of the underlying `blst` library.
@@ -11,7 +13,7 @@ The `blst` library strictly follows [RFC 9380, "Hashing to curve"](https://datat
 
 It is important to realize that `hash_to_field` already performs the hashing operation via `sha256`, regardless of the input size; furthermore, in order to reduce the inherent bias due to the modulo `p` operation, it performs an expansion (see `expand_message_xmd`), as per the RFC above. The function can be seen here: https://github.com/supranational/blst/blob/cf754001ddd10c30c366a2d6337e2a1a82bd6acf/src/hash_to_field.c#L120
 
-This is the strongest form of hashing to field, as it ensures the output to be indifferentiable from a random oracle. However, CometBFT's pre-hash makes the construction distinguishable from uniformly random. To see why, consider the following example:
+This is the strongest form of hashing to field, as it ensures the output to be indifferentiable from a random oracle. However, CometBFT's pre-hashing made the construction distinguishable from uniformly random. To see why, consider the following example:
 
 ```go
 package main
@@ -138,10 +140,6 @@ preHash: true:
     0 = 10729eaf67e498f91eccebcb139c058fc035af9920d33a3d67b22317bbae697847ea82f68f96e005d205b90c5950c4b8
     1 = 11dad0dca4707a0f40e42e9f59f0a78a2d0a18df5cae2f6baa65a5db581d2ba2ae947a6d30bd04bbe1d4588981b534ad
 ```
-
-## Impact
-
-Different objects yield the same signature under the same key, affecting the second-preimage resistance of the signature scheme, (indirectly) borrowed from the hash function.
 
 ## Fix
 

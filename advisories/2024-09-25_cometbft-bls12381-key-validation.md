@@ -2,15 +2,17 @@
 
 ## Description
 
-CometBFT latest available release is v1.0.0-rc1.0.20240805092115-3b2c5d9e1843, which introduces support for BLS signatures over the BLS12-381 curve. In this release, instantiation of BLS public keys from byte arrays is done via `github.com/cosmos/crypto v0.0.0-20240309083813-82ed2537802e`, a clone of the Prysm's wrapper over BLST, as it can be seen at: https://github.com/cometbft/cometbft/blob/86da0027d878707365c16b124b77892ca5212fe1/crypto/bls12381/key_bls12381.go#L127 The `PublicKeyFromBytes` function performs the G1 subgroup and infinity check with a call to BLST's `KeyValidate`: https://github.com/cosmos/crypto/blob/bb8c5deb91b3a722e145c4d9c6d06c6158d23dfe/curves/bls12381/pubkey.go#L64
+CometBFT omitted the subgroup check on the public keys of the BLS signature scheme. The subgroup check ensures that the public key is a point on the subgroup of prime order `r` of the curve. The omission would not only have allowed for computations in arbitrary groups but, assuming a Cosmos application using the BLS12-381 keys for a key-exchange protocol, an attacker whose public key was not validated could have induced the other participant in the protocol to inadvertently perform computations with her secret key on the invalid public key, an operation which is known to leak data about the secret key [1].
 
-CometBFT current main branch, as of September, 11, dropped the dependency above, and it has introduced a new function `NewPublicKeyFromBytes`: https://github.com/cometbft/cometbft/blob/237f30dcd2224585716e45a01fbcecf48adbff85/crypto/bls12381/key_bls12381.go#L160
+CometBFT latest available release was, at the time of this writing, v1.0.0-rc1.0.20240805092115-3b2c5d9e1843, which introduced support for BLS signatures over the BLS12-381 curve. In this release, instantiation of BLS public keys from byte arrays is done via `github.com/cosmos/crypto v0.0.0-20240309083813-82ed2537802e`, a clone of the Prysm's wrapper over BLST, as it can be seen at: https://github.com/cometbft/cometbft/blob/86da0027d878707365c16b124b77892ca5212fe1/crypto/bls12381/key_bls12381.go#L127 The `PublicKeyFromBytes` function performs the G1 subgroup and infinity check with a call to BLST's `KeyValidate`: https://github.com/cosmos/crypto/blob/bb8c5deb91b3a722e145c4d9c6d06c6158d23dfe/curves/bls12381/pubkey.go#L64
+
+CometBFT then current main branch, as of September, 11, dropped the dependency above, and it introduced a new function `NewPublicKeyFromBytes`: https://github.com/cometbft/cometbft/blob/237f30dcd2224585716e45a01fbcecf48adbff85/crypto/bls12381/key_bls12381.go#L160
 
 This function performs the deserialization of the point but **omits** the checks above.
 
 BLST's `Deserialize` function is a Go wrapper over `blst_p1_deserialize`, which deserializes and uncompresses the point; the deserialization verifies that the point lies on the multiplicative group here: https://github.com/supranational/blst/blob/52cc60d78591a56abb2f3d0bd1cdafc6ba242997/src/e1.c#L318 but this check does not verify that the point lies in the secure subgroup of G1.
 
-No further invocation of `KeyValidate` have been found in the CometBFT main branch.
+No further invocation of `KeyValidate` were found in the CometBFT main branch.
 
 ## Proof of Concept
 
@@ -114,10 +116,6 @@ CometBft: InfTrueB could not unmarshal bytes into public key
 
 ```
 The second line means that the point `NotInG1` was deserialized correctly by `NewPublicKeyFromBytes` with no further checks, whereas Prysm rejected it (although with an incorrect error message).
-
-## Impact
-
-The subgroup check ensures that the public key is a point on the subgroup of prime order `r` of the curve. The omission would not only allow for computations in arbitrary groups but, assuming a Cosmos application using the BLS12-381 keys for a key-exchange protocol, an attacker whose public key is not validated could induce the other participant in the protocol to inadvertently perform computations with her secret key on the invalid public key, an operation which is known to leak data about the secret key [1].
 
 ## Fix
 
