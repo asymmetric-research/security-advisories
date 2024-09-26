@@ -1,8 +1,8 @@
-# Missing BLS12381 Public Key Validation
+# Missing BLS12-381 Public Key Validation
 
 ## Description
 
-CometBFT latest available release is v1.0.0-rc1.0.20240805092115-3b2c5d9e1843, which introduces support for BLS signatures over the BLS12381 curve. In this release, instantiation of BLS public keys from byte arrays is done via `github.com/cosmos/crypto v0.0.0-20240309083813-82ed2537802e`, a clone of the Prysm's wrapper over BLST, as it can be seen at: https://github.com/cometbft/cometbft/blob/86da0027d878707365c16b124b77892ca5212fe1/crypto/bls12381/key_bls12381.go#L127 The `PublicKeyFromBytes` function performs the G1 subgroup and infinity check with a call to BLST's `KeyValidate`: https://github.com/cosmos/crypto/blob/bb8c5deb91b3a722e145c4d9c6d06c6158d23dfe/curves/bls12381/pubkey.go#L64
+CometBFT latest available release is v1.0.0-rc1.0.20240805092115-3b2c5d9e1843, which introduces support for BLS signatures over the BLS12-381 curve. In this release, instantiation of BLS public keys from byte arrays is done via `github.com/cosmos/crypto v0.0.0-20240309083813-82ed2537802e`, a clone of the Prysm's wrapper over BLST, as it can be seen at: https://github.com/cometbft/cometbft/blob/86da0027d878707365c16b124b77892ca5212fe1/crypto/bls12381/key_bls12381.go#L127 The `PublicKeyFromBytes` function performs the G1 subgroup and infinity check with a call to BLST's `KeyValidate`: https://github.com/cosmos/crypto/blob/bb8c5deb91b3a722e145c4d9c6d06c6158d23dfe/curves/bls12381/pubkey.go#L64
 
 CometBFT current main branch, as of September, 11, dropped the dependency above, and it has introduced a new function `NewPublicKeyFromBytes`: https://github.com/cometbft/cometbft/blob/237f30dcd2224585716e45a01fbcecf48adbff85/crypto/bls12381/key_bls12381.go#L160
 
@@ -14,7 +14,7 @@ No further invocation of `KeyValidate` have been found in the CometBFT main bran
 
 ## Proof of Concept
 
-We refer to Ethereum Beacon Protocol test vectors for BLS12381: https://github.com/ethereum/bls12-381-tests. We retrieve the three points under:
+We refer to Ethereum Beacon Protocol test vectors for BLS12-381: https://github.com/ethereum/bls12-381-tests. We retrieve the three points under:
 
 - `deserialization_G1/deserialization_fails_not_in_G1.json`
 - `deserialization_G1/eserialization_fails_infinity_with_false_b_flag.json`
@@ -26,7 +26,7 @@ referred in the code below, respectively, as:
         "InfFalseB"     : "800000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
         "InfTrueB"      : "c01000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
 
-We require the main branch in the `go.mod` and compile with `go build -tags bls12381`, in order to enable support for BLS12381.
+We require the main branch in the `go.mod` and compile with `go build -tags bls12381`, in order to enable support for BLS12-381.
 
 ```go
 package main
@@ -57,7 +57,7 @@ func G1PKPrysm(pk string) error {
 
 func G1PKCometBft(pk string) error {
         if !cometbls.Enabled {
-                return errors.New("BLS12381 not enabled")
+                return errors.New("BLS12-381 not enabled")
         }
         infp, err := hex.DecodeString(pk)
         if err != nil {
@@ -117,7 +117,7 @@ The second line means that the point `NotInG1` was deserialized correctly by `Ne
 
 ## Impact
 
-The subgroup check ensures that the public key is a point on the subgroup of prime order `r` of the curve. The omission would not only allow for computations in arbitrary groups but, assuming a Cosmos application using the BLS12381 keys for a key-exchange protocol, an attacker whose public key is not validated could induce the other participant in the protocol to inadvertently perform computations with her secret key on the invalid public key, an operation which is known to leak data about the secret key [1].
+The subgroup check ensures that the public key is a point on the subgroup of prime order `r` of the curve. The omission would not only allow for computations in arbitrary groups but, assuming a Cosmos application using the BLS12-381 keys for a key-exchange protocol, an attacker whose public key is not validated could induce the other participant in the protocol to inadvertently perform computations with her secret key on the invalid public key, an operation which is known to leak data about the secret key [1].
 
 ## Fix
 
