@@ -4,14 +4,14 @@
 
 CometBFT's BLS12-381 signatures were generated from a further round of hashing of the message. This additional step ended up affecting the second-preimage resistance of the signature scheme, because different objects yielded the same signature under the same key.
 
-CometBFT's support for BLS signatures over the BLS12-381 curve is a set of functions wrapping over `blst`'s Go bindings. The signature method of type `PrivKey` at https://github.com/cometbft/cometbft/blob/276996ad958475b69727be2c57d4d0d818849a55/crypto/bls12381/key_bls12381.go#L110
+CometBFT's support for BLS signatures over the BLS12-381 curve is a set of functions wrapping over `blst`'s Go bindings. The signature method of type `PrivKey`, [here](https://github.com/cometbft/cometbft/blob/276996ad958475b69727be2c57d4d0d818849a55/crypto/bls12381/key_bls12381.go#L110),
 adds a conditional branch to discern whether the message to sign, a byte slice, is longer than 32 bytes; in such case, the slice is hashed with `sha256`, and `blst`'s `Sign` method (of type `blst.P2Affine`) is called on the message digest, instead of the original message.
 
 Not only is this addition superflous but it alters the strength of the hash-to-curve construction of the underlying `blst` library.
 
-The `blst` library strictly follows [RFC 9380, "Hashing to curve"](https://datatracker.ietf.org/doc/html/rfc9380) when it comes to hashing arbitrary strings to one of the two subgroups G1 or G2 of the BLS12-381 curve. This operation requires the input string to be first hashed to the underlying field, before mapping the resulting field element to the given group (in the present case, G2).  This is better seen by inspecting `blst`'s `Sign` method at https://github.com/supranational/blst/blob/cf754001ddd10c30c366a2d6337e2a1a82bd6acf/bindings/go/blst.go#L503 In the absence of any optional arguments, as it is always the case in CometBFT (because it invokes the latter function always without optional arguments), `useHash` is always `true` as per `parseOpts` (and `augSingle` is `nil`). Therefore, the function `HashToG2` is always the one to be invoked in our case. `HashToG2` will then invoke the C function `blst_hash_to_g2` at https://github.com/supranational/blst/blob/cf754001ddd10c30c366a2d6337e2a1a82bd6acf/bindings/go/blst.go#L2747C4-L2747C19 The latter function ends up calling `hash_to_field`, as it can be seen at https://github.com/supranational/blst/blob/cf754001ddd10c30c366a2d6337e2a1a82bd6acf/src/map_to_g2.c#L388-L401
+The `blst` library strictly follows [RFC 9380, "Hashing to curve"](https://datatracker.ietf.org/doc/html/rfc9380) when it comes to hashing arbitrary strings to one of the two subgroups G1 or G2 of the BLS12-381 curve. This operation requires the input string to be first hashed to the underlying field, before mapping the resulting field element to the given group (in the present case, G2).  This is better seen by inspecting `blst`'s `Sign` method [here](https://github.com/supranational/blst/blob/cf754001ddd10c30c366a2d6337e2a1a82bd6acf/bindings/go/blst.go#L503). In the absence of any optional arguments, as it is always the case in CometBFT (because it invokes the latter function always without optional arguments), `useHash` is always `true` as per `parseOpts` (and `augSingle` is `nil`). Therefore, the function `HashToG2` is always the one to be invoked in our case. `HashToG2` will then invoke the C function `blst_hash_to_g2`, as seen [here](https://github.com/supranational/blst/blob/cf754001ddd10c30c366a2d6337e2a1a82bd6acf/bindings/go/blst.go#L2747C4-L2747C19). The latter function ends up calling `hash_to_field`, as it can be seen [here](https://github.com/supranational/blst/blob/cf754001ddd10c30c366a2d6337e2a1a82bd6acf/src/map_to_g2.c#L388-L401).
 
-It is important to realize that `hash_to_field` already performs the hashing operation via `sha256`, regardless of the input size; furthermore, in order to reduce the inherent bias due to the modulo `p` operation, it performs an expansion (see `expand_message_xmd`), as per the RFC above. The function can be seen here: https://github.com/supranational/blst/blob/cf754001ddd10c30c366a2d6337e2a1a82bd6acf/src/hash_to_field.c#L120
+It is important to realize that `hash_to_field` already performs the hashing operation via `sha256`, regardless of the input size; furthermore, in order to reduce the inherent bias due to the modulo `p` operation, it performs an expansion (see `expand_message_xmd`), as per the RFC above. The function can be seen [here](https://github.com/supranational/blst/blob/cf754001ddd10c30c366a2d6337e2a1a82bd6acf/src/hash_to_field.c#L120).
 
 This is the strongest form of hashing to field, as it ensures the output to be indifferentiable from a random oracle. However, CometBFT's pre-hashing made the construction distinguishable from uniformly random. To see why, consider the following example:
 
@@ -77,7 +77,7 @@ The first message is the sha256 digest of the second one, but from the point of 
 
 ## Details
 
-We use Ethereum Beacon Chain test vectors for BLS12-381 at https://github.com/ethereum/bls12-381-tests .  The code below shows two different encodings to G2, without and with pre-hashing, respectively: (the domain separation tag is the same as the one used in the test vectors, see https://github.com/ethereum/bls12-381-tests/blob/006855c56cb6491ee19b4aedfddb806aaeacb1db/main.py#L103)
+We use Ethereum Beacon Chain [test vectors for BLS12-381](https://github.com/ethereum/bls12-381-tests). The code below shows two different encodings to G2, without and with pre-hashing, respectively: (the domain separation tag is the same as the one used in the test vectors, as seen [here](https://github.com/ethereum/bls12-381-tests/blob/006855c56cb6491ee19b4aedfddb806aaeacb1db/main.py#L103))
 
 ```go
 package main
@@ -143,4 +143,4 @@ preHash: true:
 
 ## Fix
 
-https://github.com/cometbft/cometbft/pull/4116
+CometBFT fixed the issue with [these](https://github.com/cometbft/cometbft/pull/4116) changes.
