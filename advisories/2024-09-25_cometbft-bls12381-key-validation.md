@@ -8,7 +8,7 @@ CometBFT's latest available release was, at the time of this writing, v1.0.0-rc1
 
 CometBFT then-current main branch dropped the dependency above, and it introduced a new function `NewPublicKeyFromBytes`, as found [here](https://github.com/cometbft/cometbft/blob/237f30dcd2224585716e45a01fbcecf48adbff85/crypto/bls12381/key_bls12381.go#L160). This function performs the deserialization of the point but **omits** the checks above.
 
-BLST's `Deserialize` function is a Go wrapper over `blst_p1_deserialize`, which deserializes and uncompresses the point; the deserialization verifies that the point lies on the multiplicative group [here](https://github.com/supranational/blst/blob/52cc60d78591a56abb2f3d0bd1cdafc6ba242997/src/e1.c#L318) but this check does not verify that the point lies in the secure subgroup of G1.
+BLST's `Deserialize` function is a Go wrapper over `blst_p1_deserialize`, which deserializes and uncompresses the point; the deserialization verifies that the point lies on the multiplicative group [here](https://github.com/supranational/blst/blob/52cc60d78591a56abb2f3d0bd1cdafc6ba242997/src/e1.c#L318); however, this check does not verify that the point lies in the secure subgroup of G1.
 
 No further invocation of `KeyValidate` were found in the CometBFT main branch.
 
