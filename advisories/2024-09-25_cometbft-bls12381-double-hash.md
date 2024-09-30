@@ -1,8 +1,8 @@
 # BLS12-381 Wrong Signature Generation 
 
-## Description
-
 CometBFT's BLS12-381 signatures were generated from a further round of hashing of the message. This additional step ended up affecting the second-preimage resistance of the signature scheme, because different objects yielded the same signature under the same key.
+
+## Description
 
 CometBFT's support for BLS signatures over the BLS12-381 curve is a set of functions wrapping over `blst`'s Go bindings. The signature method of type `PrivKey`, [here](https://github.com/cometbft/cometbft/blob/276996ad958475b69727be2c57d4d0d818849a55/crypto/bls12381/key_bls12381.go#L110),
 adds a conditional branch to discern whether the message to sign, a byte slice, is longer than 32 bytes; in such case, the slice is hashed with `sha256`, and `blst`'s `Sign` method (of type `blst.P2Affine`) is called on the message digest, instead of the original message.
