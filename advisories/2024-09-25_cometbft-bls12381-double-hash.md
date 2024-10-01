@@ -4,8 +4,7 @@ CometBFT's BLS12-381 signatures were generated from a further round of hashing o
 
 ## Description
 
-CometBFT's support for BLS signatures over the BLS12-381 curve is a set of functions wrapping over `blst`'s Go bindings. The [`Sign`](https://github.com/cometbft/cometbft/blob/276996ad958475b69727be2c57d4d0d818849a55/crypto/bls12381/key_bls12381.go#L110) method of type `PrivKey`
-adds a conditional branch to discern whether the message to sign, a byte slice, is longer than 32 bytes; in such case, the slice is hashed with `sha256`, and `blst`'s `Sign` method (of type `blst.P2Affine`) is called on the message digest, instead of the original message.
+CometBFT's support for BLS signatures over the BLS12-381 curve is a set of functions wrapping over `blst`'s Go bindings. The [`Sign`](https://github.com/cometbft/cometbft/blob/276996ad958475b69727be2c57d4d0d818849a55/crypto/bls12381/key_bls12381.go#L110) method of type `PrivKey` adds a conditional branch to discern whether the message to sign, a byte slice, is longer than 32 bytes; in such case, the slice is hashed with `sha256`, and `blst`'s `Sign` method (of type `blst.P2Affine`) is called on the message digest, instead of the original message.
 
 Not only is this addition superflous but it alters the strength of the hash-to-curve construction of the underlying `blst` library.
 
